@@ -1,0 +1,56 @@
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+import logging
+import time
+from threading import Thread
+
+TOKEN = "7754625101:AAGzLG3scWzlazjzZJhe0hrnkxJ7_SYLe0A"
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+cleaning_active = False
+
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text("سلام! برای شروع پاکسازی رسانه‌ها، از /start_cleaning و برای متوقف کردن از /stop_cleaning استفاده کنید.")
+
+def start_cleaning(update: Update, context: CallbackContext):
+    global cleaning_active
+    if not cleaning_active:
+        cleaning_active = True
+        update.message.reply_text("پاکسازی رسانه‌ها شروع شد!")
+        Thread(target=run_cleanup, args=(context.bot, update.effective_chat.id)).start()
+    else:
+        update.message.reply_text("پاکسازی از قبل فعال است!")
+
+def stop_cleaning(update: Update, context: CallbackContext):
+    global cleaning_active
+    cleaning_active = False
+    update.message.reply_text("پاکسازی رسانه‌ها متوقف شد.")
+
+def run_cleanup(bot, chat_id):
+    global cleaning_active
+    while cleaning_active:
+        try:
+            messages = bot.get_chat_history(chat_id=chat_id, limit=100)
+            for msg in messages:
+                if msg.photo or msg.video or msg.animation or msg.document or msg.sticker:
+                    try:
+                        bot.delete_message(chat_id=chat_id, message_id=msg.message_id)
+                    except:
+                        pass
+        except:
+            pass
+        time.sleep(360)
+
+def main():
+    updater = Updater(TOKEN)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("start_cleaning", start_cleaning))
+    dp.add_handler(CommandHandler("stop_cleaning", stop_cleaning))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
